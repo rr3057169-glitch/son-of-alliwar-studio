@@ -1,9 +1,13 @@
 import streamlit as st
 import asyncio
+import nest_asyncio
 import edge_tts
 import requests
 import tempfile
 import os
+
+# Streamlit Async Fix
+nest_asyncio.apply()
 
 # Page Setup
 st.set_page_config(page_title="Son Of Alliwar Studio", page_icon="🎙️", layout="centered")
@@ -24,6 +28,19 @@ engine_choice = st.radio(
 )
 
 st.divider()
+
+# Helper function to run async edge-tts safely
+def run_tts_sync(text, voice):
+    async def _main():
+        communicate = edge_tts.Communicate(text, voice)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
+            tmp_name = tmp_file.name
+        await communicate.save(tmp_name)
+        return tmp_name
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    return loop.run_until_complete(_main())
 
 # ==========================================
 # 🎭 1. FREE MULTI-CHARACTER STORY MODE
@@ -50,52 +67,45 @@ if "Free Multi-Character" in engine_choice:
 
     story_text = st.text_area("📝 कथा / संवाद लिहा:", height=200, placeholder="राजू: अरे सीमा तू कुठे चाललीस?\nसीमा: मी बाजारात चालले आहे, तू पण येतोस का?")
 
-    async def generate_dialogue(text):
-        lines = text.strip().split("\n")
-        audio_files = []
-        
-        for line in lines:
-            if not line.strip():
-                continue
-            
-            current_voice = male_voice
-            speaker_text = line.strip()
-
-            if ":" in line:
-                parts = line.split(":", 1)
-                speaker_name = parts[0].strip().lower()
-                speaker_text = parts[1].strip()
-
-                if any(k in speaker_name for k in ["female", "girl", "woman", "स्त्री", "मुलगी", "सीमा", "पूजा", "अंकिता", "रिया", "राधा"]):
-                    current_voice = female_voice
-
-            if speaker_text:
-                communicate = edge_tts.Communicate(speaker_text, current_voice)
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
-                    tmp_name = tmp_file.name
-                await communicate.save(tmp_name)
-                audio_files.append(tmp_name)
-
-        combined_data = bytearray()
-        for fpath in audio_files:
-            with open(fpath, "rb") as f:
-                combined_data.extend(f.read())
-            if os.path.exists(fpath):
-                os.remove(fpath)
-                
-        return combined_data
-
     if st.button("🔊 Generate Free Story Audio", type="primary"):
         if not story_text.strip():
             st.warning("⚠️ कृपया कथा लिहा!")
         else:
             with st.spinner("✨ पूर्ण कथेचा आवाज तयार होत आहे..."):
                 try:
-                    full_audio = asyncio.run(generate_dialogue(story_text))
-                    if full_audio:
+                    lines = story_text.strip().split("\n")
+                    combined_data = bytearray()
+                    
+                    for line in lines:
+                        if not line.strip():
+                            continue
+                        
+                        current_voice = male_voice
+                        speaker_text = line.strip()
+
+                        if ":" in line:
+                            parts = line.split(":", 1)
+                            speaker_name = parts[0].strip().lower()
+                            speaker_text = parts[1].strip()
+
+                            if any(k in speaker_name for k in ["female", "girl", "woman", "स्त्री", "मुलगी", "सीमा", "पूजा", "अंकिता", "रिया", "राधा"]):
+                                current_voice = female_voice
+
+                        if speaker_text:
+                            # Safely generate audio file line by line
+                            tmp_fpath = run_tts_sync(speaker_text, current_voice)
+                            with open(tmp_fpath, "rb") as f:
+                                combined_data.extend(f.read())
+                            if os.path.exists(tmp_fpath):
+                                os.remove(tmp_fpath)
+
+                    if combined_data:
                         st.success("🎉 Audio तयार झाला!")
-                        st.audio(bytes(full_audio), format="audio/mp3")
-                        st.download_button("📥 MP3 Download करा", bytes(full_audio), file_name="alliwar_free_story.mp3", mime="audio/mp3")
+                        st.audio(bytes(combined_data), format="audio/mp3")
+                        st.download_button("📥 MP3 Download करा", bytes(combined_data), file_name="alliwar_free_story.mp3", mime="audio/mp3")
+                    else:
+                        st.error("काहीतरी गडबड झाली, पुन्हा प्रयत्न करा.")
+
                 except Exception as e:
                     st.error(f"Error details: {str(e)}")
 
@@ -189,20 +199,13 @@ elif "Single Voice Free" in engine_choice:
 
     text_input = st.text_area("📝 मजकूर लिहा:", height=150)
 
-    async def generate_edge_audio(text, voice):
-        communicate = edge_tts.Communicate(text, voice)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
-            output_filename = tmp_file.name
-        await communicate.save(output_filename)
-        return output_filename
-
     if st.button("🔊 Generate Single Free Voice", type="primary"):
         if not text_input.strip():
             st.warning("⚠️ कृपया मजकूर लिहा!")
         else:
             with st.spinner("✨ आवाज तयार होत आहे..."):
                 try:
-                    audio_path = asyncio.run(generate_edge_audio(text_input, voice_code))
+                    audio_path = run_tts_sync(text_input, voice_code)
                     with open(audio_path, "rb") as f:
                         audio_data = f.read()
                         st.success("🎉 आवाज तयार झाला!")
