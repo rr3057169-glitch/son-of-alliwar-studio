@@ -62,11 +62,11 @@ if "Free Mode" in engine_choice:
     col_speed, col_pitch = st.columns(2)
     with col_speed:
         speed_val = st.slider("⚡ आवाजाचा वेग (Speed):", min_value=-50, max_value=50, value=0, step=5, format="%d%%")
-        speed_str = f"{'+' if speed_val >= 0 else ''}{speed_val}%"
+        speed_str = f"{speed_val:+d}%"
 
     with col_pitch:
         pitch_val = st.slider("🎵 आवाजाचा चढाव/उतार (Pitch):", min_value=-50, max_value=50, value=0, step=5, format="%dHz")
-        pitch_str = f"{'+' if pitch_val >= 0 else ''}{pitch_val}Hz"
+        pitch_str = f"{pitch_val:+d}Hz"
 
     # 3. Text Area
     text_input = st.text_area("📝 तुमची स्क्रिप्ट / मजकूर लिहा:", height=150, placeholder="निवडलेल्या भाषेत इथे मजकूर लिहा...")
