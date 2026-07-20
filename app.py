@@ -25,6 +25,15 @@ engine_choice = st.radio(
 
 st.divider()
 
+# Helper function to format pitch & speed correctly for Edge-TTS
+def format_param(value, unit):
+    if value > 0:
+        return f"+{value}{unit}"
+    elif value < 0:
+        return f"{value}{unit}"
+    else:
+        return f"+0{unit}"
+
 # ==========================================
 # 🎭 1. FREE MULTI-CHARACTER STORY MODE
 # ==========================================
@@ -55,10 +64,10 @@ if "Free Multi-Character" in engine_choice:
     col_s, col_p = st.columns(2)
     with col_s:
         speed_val = st.slider("⚡ Speed:", -50, 50, 0, 5, format="%d%%")
-        speed_str = f"{speed_val:+d}%"
+        speed_str = format_param(speed_val, "%")
     with col_p:
         pitch_val = st.slider("🎵 Pitch:", -50, 50, 0, 5, format="%dHz")
-        pitch_str = f"{pitch_val:+d}Hz"
+        pitch_str = format_param(pitch_val, "Hz")
 
     async def generate_dialogue(text):
         lines = text.strip().split("\n")
@@ -199,10 +208,10 @@ elif "Single Voice Free" in engine_choice:
     col_speed, col_pitch = st.columns(2)
     with col_speed:
         speed_val = st.slider("⚡ Speed:", -50, 50, 0, 5, format="%d%%")
-        speed_str = f"{speed_val:+d}%"
+        speed_str = format_param(speed_val, "%")
     with col_pitch:
         pitch_val = st.slider("🎵 Pitch:", -50, 50, 0, 5, format="%dHz")
-        pitch_str = f"{pitch_val:+d}Hz"
+        pitch_str = format_param(pitch_val, "Hz")
 
     text_input = st.text_area("📝 मजकूर लिहा:", height=150)
 
