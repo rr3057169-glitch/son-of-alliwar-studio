@@ -25,14 +25,11 @@ engine_choice = st.radio(
 
 st.divider()
 
-# Helper function to format pitch & speed correctly for Edge-TTS
-def format_param(value, unit):
-    if value > 0:
-        return f"+{value}{unit}"
-    elif value < 0:
-        return f"{value}{unit}"
-    else:
-        return f"+0{unit}"
+# Format helper function for Edge-TTS
+def get_rate_pitch_str(speed_val, pitch_val):
+    rate_str = f"{speed_val:+d}%" if speed_val != 0 else "+0%"
+    pitch_str = f"{pitch_val:+d}Hz" if pitch_val != 0 else "+0Hz"
+    return rate_str, pitch_str
 
 # ==========================================
 # 🎭 1. FREE MULTI-CHARACTER STORY MODE
@@ -40,7 +37,7 @@ def format_param(value, unit):
 if "Free Multi-Character" in engine_choice:
     st.success("✨ **Free Multi-Character Mode:** पुरुष आणि स्त्री संवादांची पूर्ण कथा एकाच वेळी बनवा!")
     
-    col_l, col_m, col_f = st.columns(3)
+    col_l, col_m = st.columns(2)
     with col_l:
         lang_choice = st.selectbox("🌐 कथा भाषा (Language):", ["Marathi", "Hindi", "English (India)"])
     
@@ -64,10 +61,10 @@ if "Free Multi-Character" in engine_choice:
     col_s, col_p = st.columns(2)
     with col_s:
         speed_val = st.slider("⚡ Speed:", -50, 50, 0, 5, format="%d%%")
-        speed_str = format_param(speed_val, "%")
     with col_p:
         pitch_val = st.slider("🎵 Pitch:", -50, 50, 0, 5, format="%dHz")
-        pitch_str = format_param(pitch_val, "Hz")
+
+    rate_str, pitch_str = get_rate_pitch_str(speed_val, pitch_val)
 
     async def generate_dialogue(text):
         lines = text.strip().split("\n")
@@ -89,7 +86,7 @@ if "Free Multi-Character" in engine_choice:
                     current_voice = female_voice
 
             if speaker_text:
-                communicate = edge_tts.Communicate(speaker_text, current_voice, rate=speed_str, pitch=pitch_str)
+                communicate = edge_tts.Communicate(speaker_text, current_voice, rate=rate_str, pitch=pitch_str)
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
                     tmp_name = tmp_file.name
                 await communicate.save(tmp_name)
@@ -111,9 +108,10 @@ if "Free Multi-Character" in engine_choice:
             with st.spinner("✨ पूर्ण कथेचा आवाज तयार होत आहे..."):
                 try:
                     full_audio = asyncio.run(generate_dialogue(story_text))
-                    st.success("🎉 Audio तयार झाला!")
-                    st.audio(bytes(full_audio), format="audio/mp3")
-                    st.download_button("📥 MP3 Download करा", bytes(full_audio), file_name="alliwar_free_story.mp3", mime="audio/mp3")
+                    if full_audio:
+                        st.success("🎉 Audio तयार झाला!")
+                        st.audio(bytes(full_audio), format="audio/mp3")
+                        st.download_button("📥 MP3 Download करा", bytes(full_audio), file_name="alliwar_free_story.mp3", mime="audio/mp3")
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
 
@@ -208,11 +206,10 @@ elif "Single Voice Free" in engine_choice:
     col_speed, col_pitch = st.columns(2)
     with col_speed:
         speed_val = st.slider("⚡ Speed:", -50, 50, 0, 5, format="%d%%")
-        speed_str = format_param(speed_val, "%")
     with col_pitch:
         pitch_val = st.slider("🎵 Pitch:", -50, 50, 0, 5, format="%dHz")
-        pitch_str = format_param(pitch_val, "Hz")
 
+    rate_str, pitch_str = get_rate_pitch_str(speed_val, pitch_val)
     text_input = st.text_area("📝 मजकूर लिहा:", height=150)
 
     async def generate_edge_audio(text, voice, rate, pitch):
@@ -228,7 +225,7 @@ elif "Single Voice Free" in engine_choice:
         else:
             with st.spinner("✨ आवाज तयार होत आहे..."):
                 try:
-                    audio_path = asyncio.run(generate_edge_audio(text_input, voice_code, speed_str, pitch_str))
+                    audio_path = asyncio.run(generate_edge_audio(text_input, voice_code, rate_str, pitch_str))
                     with open(audio_path, "rb") as f:
                         audio_data = f.read()
                         st.success("🎉 आवाज तयार झाला!")
