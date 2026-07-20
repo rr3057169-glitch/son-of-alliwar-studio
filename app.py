@@ -25,21 +25,13 @@ engine_choice = st.radio(
 
 st.divider()
 
-# Format helper function for Edge-TTS
-def get_rate_pitch_str(speed_val, pitch_val):
-    rate_str = f"{speed_val:+d}%" if speed_val != 0 else "+0%"
-    pitch_str = f"{pitch_val:+d}Hz" if pitch_val != 0 else "+0Hz"
-    return rate_str, pitch_str
-
 # ==========================================
 # 🎭 1. FREE MULTI-CHARACTER STORY MODE
 # ==========================================
 if "Free Multi-Character" in engine_choice:
     st.success("✨ **Free Multi-Character Mode:** पुरुष आणि स्त्री संवादांची पूर्ण कथा एकाच वेळी बनवा!")
     
-    col_l, col_m = st.columns(2)
-    with col_l:
-        lang_choice = st.selectbox("🌐 कथा भाषा (Language):", ["Marathi", "Hindi", "English (India)"])
+    lang_choice = st.selectbox("🌐 कथा भाषा (Language):", ["Marathi", "Hindi", "English (India)"])
     
     voice_db = {
         "Marathi": {"Male": "mr-IN-MadhavNeural", "Female": "mr-IN-AarohiNeural"},
@@ -57,14 +49,6 @@ if "Free Multi-Character" in engine_choice:
     """)
 
     story_text = st.text_area("📝 कथा / संवाद लिहा:", height=200, placeholder="राजू: अरे सीमा तू कुठे चाललीस?\nसीमा: मी बाजारात चालले आहे, तू पण येतोस का?")
-
-    col_s, col_p = st.columns(2)
-    with col_s:
-        speed_val = st.slider("⚡ Speed:", -50, 50, 0, 5, format="%d%%")
-    with col_p:
-        pitch_val = st.slider("🎵 Pitch:", -50, 50, 0, 5, format="%dHz")
-
-    rate_str, pitch_str = get_rate_pitch_str(speed_val, pitch_val)
 
     async def generate_dialogue(text):
         lines = text.strip().split("\n")
@@ -86,7 +70,7 @@ if "Free Multi-Character" in engine_choice:
                     current_voice = female_voice
 
             if speaker_text:
-                communicate = edge_tts.Communicate(speaker_text, current_voice, rate=rate_str, pitch=pitch_str)
+                communicate = edge_tts.Communicate(speaker_text, current_voice)
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
                     tmp_name = tmp_file.name
                 await communicate.save(tmp_name)
@@ -113,7 +97,7 @@ if "Free Multi-Character" in engine_choice:
                         st.audio(bytes(full_audio), format="audio/mp3")
                         st.download_button("📥 MP3 Download करा", bytes(full_audio), file_name="alliwar_free_story.mp3", mime="audio/mp3")
                 except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                    st.error(f"Error details: {str(e)}")
 
 # ==========================================
 # 💎 2. PREMIUM MULTI-CHARACTER (ELEVENLABS)
@@ -203,17 +187,10 @@ elif "Single Voice Free" in engine_choice:
     gender_key = "Male" if "Male" in selected_gender else "Female"
     voice_code = lang_map[selected_lang][gender_key]
 
-    col_speed, col_pitch = st.columns(2)
-    with col_speed:
-        speed_val = st.slider("⚡ Speed:", -50, 50, 0, 5, format="%d%%")
-    with col_pitch:
-        pitch_val = st.slider("🎵 Pitch:", -50, 50, 0, 5, format="%dHz")
-
-    rate_str, pitch_str = get_rate_pitch_str(speed_val, pitch_val)
     text_input = st.text_area("📝 मजकूर लिहा:", height=150)
 
-    async def generate_edge_audio(text, voice, rate, pitch):
-        communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
+    async def generate_edge_audio(text, voice):
+        communicate = edge_tts.Communicate(text, voice)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
             output_filename = tmp_file.name
         await communicate.save(output_filename)
@@ -225,7 +202,7 @@ elif "Single Voice Free" in engine_choice:
         else:
             with st.spinner("✨ आवाज तयार होत आहे..."):
                 try:
-                    audio_path = asyncio.run(generate_edge_audio(text_input, voice_code, rate_str, pitch_str))
+                    audio_path = asyncio.run(generate_edge_audio(text_input, voice_code))
                     with open(audio_path, "rb") as f:
                         audio_data = f.read()
                         st.success("🎉 आवाज तयार झाला!")
@@ -234,7 +211,7 @@ elif "Single Voice Free" in engine_choice:
                     if os.path.exists(audio_path):
                         os.remove(audio_path)
                 except Exception as e:
-                    st.error(f"Error: {str(e)}")
+                    st.error(f"Error details: {str(e)}")
 
 # ==========================================
 # 💎 4. SINGLE VOICE PREMIUM MODE
