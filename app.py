@@ -1,13 +1,9 @@
 import streamlit as st
 import asyncio
-import nest_asyncio
 import edge_tts
 import requests
 import tempfile
 import os
-
-# Streamlit Async Fix
-nest_asyncio.apply()
 
 # Page Setup
 st.set_page_config(page_title="Son Of Alliwar Studio", page_icon="🎙️", layout="centered")
@@ -28,19 +24,6 @@ engine_choice = st.radio(
 )
 
 st.divider()
-
-# Helper function to run async edge-tts safely
-def run_tts_sync(text, voice):
-    async def _main():
-        communicate = edge_tts.Communicate(text, voice)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
-            tmp_name = tmp_file.name
-        await communicate.save(tmp_name)
-        return tmp_name
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    return loop.run_until_complete(_main())
 
 # ==========================================
 # 🎭 1. FREE MULTI-CHARACTER STORY MODE
@@ -92,12 +75,18 @@ if "Free Multi-Character" in engine_choice:
                                 current_voice = female_voice
 
                         if speaker_text:
-                            # Safely generate audio file line by line
-                            tmp_fpath = run_tts_sync(speaker_text, current_voice)
-                            with open(tmp_fpath, "rb") as f:
+                            # Direct Communicate without complex custom loop
+                            communicate = edge_tts.Communicate(speaker_text, current_voice)
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
+                                tmp_name = tmp_file.name
+                            
+                            # Standard asyncio run per line
+                            asyncio.run(communicate.save(tmp_name))
+                            
+                            with open(tmp_name, "rb") as f:
                                 combined_data.extend(f.read())
-                            if os.path.exists(tmp_fpath):
-                                os.remove(tmp_fpath)
+                            if os.path.exists(tmp_name):
+                                os.remove(tmp_name)
 
                     if combined_data:
                         st.success("🎉 Audio तयार झाला!")
@@ -205,7 +194,11 @@ elif "Single Voice Free" in engine_choice:
         else:
             with st.spinner("✨ आवाज तयार होत आहे..."):
                 try:
-                    audio_path = run_tts_sync(text_input, voice_code)
+                    communicate = edge_tts.Communicate(text_input, voice_code)
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
+                        audio_path = tmp_file.name
+                    asyncio.run(communicate.save(audio_path))
+
                     with open(audio_path, "rb") as f:
                         audio_data = f.read()
                         st.success("🎉 आवाज तयार झाला!")
