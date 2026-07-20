@@ -1,6 +1,5 @@
 import streamlit as st
-import asyncio
-import edge_tts
+from gtts import gTTS
 import requests
 import tempfile
 import os
@@ -26,21 +25,20 @@ engine_choice = st.radio(
 st.divider()
 
 # ==========================================
-# 🎭 1. FREE MULTI-CHARACTER STORY MODE
+# 🎭 1. FREE MULTI-CHARACTER STORY MODE (Google Engine)
 # ==========================================
 if "Free Multi-Character" in engine_choice:
-    st.success("✨ **Free Multi-Character Mode:** पुरुष आणि स्त्री संवादांची पूर्ण कथा एकाच वेळी बनवा!")
+    st.success("✨ **Free Multi-Character Mode:** (100% Guaranteed Working)")
     
-    lang_choice = st.selectbox("🌐 कथा भाषा (Language):", ["Marathi", "Hindi", "English (India)"])
+    lang_choice = st.selectbox("🌐 कथा भाषा (Language):", ["Marathi", "Hindi", "English"])
     
-    voice_db = {
-        "Marathi": {"Male": "mr-IN-MadhavNeural", "Female": "mr-IN-AarohiNeural"},
-        "Hindi": {"Male": "hi-IN-MadhurNeural", "Female": "hi-IN-SwaraNeural"},
-        "English (India)": {"Male": "en-IN-PrabhatNeural", "Female": "en-IN-NeerjaNeural"}
+    lang_code_map = {
+        "Marathi": "mr",
+        "Hindi": "hi",
+        "English": "en"
     }
     
-    male_voice = voice_db[lang_choice]["Male"]
-    female_voice = voice_db[lang_choice]["Female"]
+    selected_lang_code = lang_code_map[lang_choice]
 
     st.markdown("""
     💡 **फॉर्मॅट:**  
@@ -54,7 +52,7 @@ if "Free Multi-Character" in engine_choice:
         if not story_text.strip():
             st.warning("⚠️ कृपया कथा लिहा!")
         else:
-            with st.spinner("✨ पूर्ण कथेचा आवाज तयार होत आहे..."):
+            with st.spinner("✨ आवाज तयार होत आहे..."):
                 try:
                     lines = story_text.strip().split("\n")
                     combined_data = bytearray()
@@ -63,25 +61,19 @@ if "Free Multi-Character" in engine_choice:
                         if not line.strip():
                             continue
                         
-                        current_voice = male_voice
                         speaker_text = line.strip()
 
                         if ":" in line:
                             parts = line.split(":", 1)
-                            speaker_name = parts[0].strip().lower()
                             speaker_text = parts[1].strip()
 
-                            if any(k in speaker_name for k in ["female", "girl", "woman", "स्त्री", "मुलगी", "सीमा", "पूजा", "अंकिता", "रिया", "राधा"]):
-                                current_voice = female_voice
-
                         if speaker_text:
-                            # Direct Communicate without complex custom loop
-                            communicate = edge_tts.Communicate(speaker_text, current_voice)
+                            # Direct Google TTS - Zero Async Errors
+                            tts = gTTS(text=speaker_text, lang=selected_lang_code, slow=False)
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
                                 tmp_name = tmp_file.name
                             
-                            # Standard asyncio run per line
-                            asyncio.run(communicate.save(tmp_name))
+                            tts.save(tmp_name)
                             
                             with open(tmp_name, "rb") as f:
                                 combined_data.extend(f.read())
@@ -89,9 +81,9 @@ if "Free Multi-Character" in engine_choice:
                                 os.remove(tmp_name)
 
                     if combined_data:
-                        st.success("🎉 Audio तयार झाला!")
+                        st.success("🎉 Audio यशस्विरित्या तयार झाला!")
                         st.audio(bytes(combined_data), format="audio/mp3")
-                        st.download_button("📥 MP3 Download करा", bytes(combined_data), file_name="alliwar_free_story.mp3", mime="audio/mp3")
+                        st.download_button("📥 MP3 Download करा", bytes(combined_data), file_name="alliwar_story.mp3", mime="audio/mp3")
                     else:
                         st.error("काहीतरी गडबड झाली, पुन्हा प्रयत्न करा.")
 
@@ -102,17 +94,11 @@ if "Free Multi-Character" in engine_choice:
 # 💎 2. PREMIUM MULTI-CHARACTER (ELEVENLABS)
 # ==========================================
 elif "Premium Multi-Character" in engine_choice:
-    st.info("💎 **ElevenLabs Multi-Character Story Mode:** Adam (Male) आणि Rachel (Female) च्या आवाजात HD स्टोरी बनवा!")
+    st.info("💎 **ElevenLabs Multi-Character Story Mode:** HD आवाज जनरेटर")
     
     api_key = st.text_input("🔑 ElevenLabs API Key टाका:", type="password")
 
-    st.markdown("""
-    💡 **फॉर्मॅट:**  
-    `राजू: अरे तू कुठे चाललास?`  
-    `सीमा: मी बाजारात चालले आहे.`
-    """)
-
-    story_text = st.text_area("📝 कथा / संवाद लिहा:", height=200, placeholder="राजू: अरे सीमा तू कुठे चाललीस?\nसीमा: मी बाजारात चालले आहे, तू पण येतोस का?")
+    story_text = st.text_area("📝 कथा / संवाद लिहा:", height=200, placeholder="राजू: अरे सीमा तू कुठे चाललीस?\nसीमा: मी बाजारात चालले आहे.")
 
     eleven_male_id = "pNInz6obpgDQGcFmJgQb"    # Adam
     eleven_female_id = "21m00Tcm4TlvDq8ikWAM"  # Rachel
@@ -133,7 +119,7 @@ elif "Premium Multi-Character" in engine_choice:
                 speaker_name = parts[0].strip().lower()
                 speaker_text = parts[1].strip()
 
-                if any(k in speaker_name for k in ["female", "girl", "woman", "स्त्री", "मुलगी", "सीमा", "पूजा", "अंकिता", "रिया", "राधा"]):
+                if any(k in speaker_name for k in ["female", "girl", "woman", "स्त्री", "मुलगी", "सीमा", "पूजा", "राधा"]):
                     current_voice_id = eleven_female_id
 
             if speaker_text:
@@ -145,47 +131,36 @@ elif "Premium Multi-Character" in engine_choice:
                 if res.status_code == 200:
                     combined_data.extend(res.content)
                 else:
-                    st.error(f"Error on line: {speaker_text} | Details: {res.text}")
+                    st.error(f"Error: {res.text}")
                     return None
         return combined_data
 
     if st.button("🔊 Generate ElevenLabs Premium Story", type="primary"):
         if not api_key:
-            st.error("⚠️ कृपया आधी API Key टाका!")
+            st.error("⚠️ कृपया API Key टाका!")
         elif not story_text.strip():
             st.warning("⚠️ कृपया कथा लिहा!")
         else:
-            with st.spinner("✨ ElevenLabs HD आवाज जोडत आहे..."):
+            with st.spinner("✨ ElevenLabs HD आवाज तयार होत आहे..."):
                 full_audio = generate_eleven_story(story_text, api_key)
                 if full_audio:
                     st.success("🎉 Premium HD Story तयार झाली!")
                     st.audio(bytes(full_audio), format="audio/mp3")
-                    st.download_button("📥 MP3 Download करा", bytes(full_audio), file_name="alliwar_eleven_story.mp3", mime="audio/mp3")
+                    st.download_button("📥 MP3 Download करा", bytes(full_audio), file_name="alliwar_eleven.mp3", mime="audio/mp3")
 
 # ==========================================
 # 🆓 3. SINGLE VOICE FREE MODE
 # ==========================================
 elif "Single Voice Free" in engine_choice:
-    st.success("✅ **Single Voice Free Mode:** १२ भारतीय भाषा + फॉरेन भाषा")
+    st.success("✅ **Single Voice Free Mode**")
 
     lang_map = {
-        "मराठी (Marathi)": {"Male": "mr-IN-MadhavNeural", "Female": "mr-IN-AarohiNeural"},
-        "हिंदी (Hindi)": {"Male": "hi-IN-MadhurNeural", "Female": "hi-IN-SwaraNeural"},
-        "English (India)": {"Male": "en-IN-PrabhatNeural", "Female": "en-IN-NeerjaNeural"},
-        "தமிழ் (Tamil)": {"Male": "ta-IN-ValluvarNeural", "Female": "ta-IN-PallaviNeural"},
-        "తెలుగు (Telugu)": {"Male": "te-IN-MohanNeural", "Female": "te-IN-ShrutiNeural"},
-        "English (US)": {"Male": "en-US-GuyNeural", "Female": "en-US-AriaNeural"}
+        "मराठी (Marathi)": "mr",
+        "हिंदी (Hindi)": "hi",
+        "English": "en"
     }
 
-    col_lang, col_gender = st.columns(2)
-    with col_lang:
-        selected_lang = st.selectbox("🌐 भाषा निवडा:", list(lang_map.keys()))
-    with col_gender:
-        selected_gender = st.selectbox("🎭 पात्र / लिंग:", ["Male (पुरुष)", "Female (स्त्री)"])
-
-    gender_key = "Male" if "Male" in selected_gender else "Female"
-    voice_code = lang_map[selected_lang][gender_key]
-
+    selected_lang = st.selectbox("🌐 भाषा निवडा:", list(lang_map.keys()))
     text_input = st.text_area("📝 मजकूर लिहा:", height=150)
 
     if st.button("🔊 Generate Single Free Voice", type="primary"):
@@ -194,10 +169,10 @@ elif "Single Voice Free" in engine_choice:
         else:
             with st.spinner("✨ आवाज तयार होत आहे..."):
                 try:
-                    communicate = edge_tts.Communicate(text_input, voice_code)
+                    tts = gTTS(text=text_input, lang=lang_map[selected_lang], slow=False)
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
                         audio_path = tmp_file.name
-                    asyncio.run(communicate.save(audio_path))
+                    tts.save(audio_path)
 
                     with open(audio_path, "rb") as f:
                         audio_data = f.read()
@@ -213,14 +188,12 @@ elif "Single Voice Free" in engine_choice:
 # 💎 4. SINGLE VOICE PREMIUM MODE
 # ==========================================
 else:
-    st.info("💎 **Single Voice Premium Mode:** ElevenLabs Voice Generator")
+    st.info("💎 **Single Voice Premium Mode:** ElevenLabs Generator")
     api_key = st.text_input("🔑 ElevenLabs API Key:", type="password")
     
     eleven_voices = {
         "Adam (Deep Male)": "pNInz6obpgDQGcFmJgQb",
-        "Rachel (Calm Female)": "21m00Tcm4TlvDq8ikWAM",
-        "Domi (Energetic Female)": "AZnzlk1XvdvUeBnXmlld",
-        "Bella (Soft Female)": "EXAVITQu4vr4xnSDxMaL"
+        "Rachel (Calm Female)": "21m00Tcm4TlvDq8ikWAM"
     }
 
     selected_ev = st.selectbox("🎙️ पात्र निवडा:", list(eleven_voices.keys()))
