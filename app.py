@@ -35,12 +35,17 @@ def text_to_speech(text, voice_code, rate_str, pitch_str):
         await communicate.save(path)
         return path
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
     try:
-        res = loop.run_until_complete(_gen())
-    finally:
-        loop.close()
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If an event loop is already running, create a new one for this thread
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    res = loop.run_until_complete(_gen())
     return res
 
 # Language Database
