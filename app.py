@@ -26,7 +26,7 @@ if "speed" not in st.session_state:
 if "pitch" not in st.session_state:
     st.session_state.pitch = 0
 
-# Helper function for Async Edge TTS
+# Helper function for Async Edge TTS with better error handling
 def text_to_speech(text, voice_code, rate_str, pitch_str):
     async def _gen():
         communicate = edge_tts.Communicate(text, voice_code, rate=rate_str, pitch=pitch_str)
@@ -36,17 +36,20 @@ def text_to_speech(text, voice_code, rate_str, pitch_str):
         return path
 
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If an event loop is already running, create a new one for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
 
-    res = loop.run_until_complete(_gen())
-    return res
+        if loop and loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                res = pool.submit(asyncio.run, _gen()).result()
+                return res
+        else:
+            return asyncio.run(_gen())
+    except Exception as e:
+        raise Exception(f"TTS Generation Failed: {str(e)}")
 
 # Language Database
 voice_db = {
@@ -133,7 +136,7 @@ if "Free Engine" in engine_choice:
                     if os.path.exists(audio_path):
                         os.remove(audio_path)
                 except Exception as e:
-                    st.error(f"Error details: {str(e)}")
+                    st.error(f" एरर आली: कृपया मजकूर थोडा लहान करा किंवा पुन्हा प्रयत्न करा. ({str(e)})")
 
 # ==========================================
 # 💎 2. PREMIUM ENGINE (ELEVENLABS)
